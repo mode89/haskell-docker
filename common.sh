@@ -1,0 +1,2 @@
+IMAGE_NAME=haskell-docker
+CONTAINER_NAME=${IMAGE_NAME}

@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+
+source $(dirname $0)/common.sh
+
+graphical_options() {
+    echo \
+        --env DISPLAY \
+        --gpus all \
+        --volume /tmp/.X11-unix:/tmp/.X11-unix
+}
+
+run_container() {
+    docker run \
+        --interactive \
+        --name ${CONTAINER_NAME} \
+        --rm \
+        --tty \
+        --user user \
+        --volume $PWD:/workdir:rw \
+        $(graphical_options) \
+        $CONTAINER_NAME \
+        $@ || exit -1
+}
+
+run_container $@

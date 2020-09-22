@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+
+source $(dirname $0)/common.sh
+
+BUILD_DIR=$(dirname $0)
+CONTAINER_USER=user
+COPY_HOST_CERTIFICATES=1
+HOST_USER_GID=$(id --group)
+HOST_USER_UID=$(id --user)
+
+parse_arguments() {
+    while [[ $# -gt 0 ]]; do
+        local arg=$1
+        case $arg in
+            --no-copy-certificates)
+                COPY_HOST_CERTIFICATES=1
+            ;;
+            *)
+                echo "Unknown argument: $arg"
+                exit 1
+            ;;
+        esac
+        shift
+    done
+}
+
+copy_host_certificates() {
+    echo "Copying host's certificates ..."
+
+    if [ -d /usr/local/share/ca-certificates ]; then
+        cp -r /usr/local/share/ca-certificates $BUILD_DIR || exit 1
+    fi
+
+    if [ -d /usr/share/ca-certificates ]; then
+        cp -r /usr/share/ca-certificates $BUILD_DIR || exit 1
+    fi
+}
+
+build_image() {
+    docker build \
+        --build-arg CONTAINER_USER=${CONTAINER_USER:?} \
+        --build-arg COPY_HOST_CERTIFICATES=${COPY_HOST_CERTIFICATES:?} \
+        --build-arg HOST_USER_GID=${HOST_USER_GID:?} \
+        --build-arg HOST_USER_UID=${HOST_USER_UID:?} \
+        --build-arg TIMEZONE=$(cat /etc/timezone) \
+        --tag $IMAGE_NAME \
+        $BUILD_DIR || exit_on_error
+}
+
+parse_arguments $@
+if [ ${COPY_HOST_CERTIFICATES:?} -eq 1 ]; then
+    copy_host_certificates
+fi
+build_image
