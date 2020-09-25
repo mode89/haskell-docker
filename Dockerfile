@@ -41,5 +41,9 @@ RUN groupadd --gid ${HOST_USER_GID:?} ${CONTAINER_USER:?} && \
     apt-get install -y sudo && \
     echo "${CONTAINER_USER:?} ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
 
+USER user
+RUN cabal update
+RUN cabal install --lib random
+
 WORKDIR /workdir
 CMD /bin/bash
