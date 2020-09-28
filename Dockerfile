@@ -41,9 +41,27 @@ RUN groupadd --gid ${HOST_USER_GID:?} ${CONTAINER_USER:?} && \
     apt-get install -y sudo && \
     echo "${CONTAINER_USER:?} ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
 
+RUN apt-get install -y \
+        libgtk-3-dev
+
 USER user
-RUN cabal update
-RUN cabal install --lib random
+RUN stack update
+RUN stack install --resolver ghc-8.10.2 --system-ghc \
+        alex \
+        cairo \
+        gio \
+        glib \
+        gtk2hs-buildtools \
+        gtk3 \
+        happy \
+        hashable \
+        hashtables \
+        pango \
+        primitive \
+        random \
+        splitmix \
+        utf8-string \
+        vector
 
 WORKDIR /workdir
 CMD /bin/bash
