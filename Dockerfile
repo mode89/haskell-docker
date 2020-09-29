@@ -45,23 +45,7 @@ RUN apt-get install -y \
         libgtk-3-dev
 
 USER user
-RUN stack update
-RUN stack install --resolver ghc-8.10.2 --system-ghc \
-        alex \
-        cairo \
-        gio \
-        glib \
-        gtk2hs-buildtools \
-        gtk3 \
-        happy \
-        hashable \
-        hashtables \
-        pango \
-        primitive \
-        random \
-        splitmix \
-        utf8-string \
-        vector
+RUN ln -s /workdir/.stack-global /home/user/.stack
 
 WORKDIR /workdir
 CMD /bin/bash

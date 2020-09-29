@@ -2,6 +2,15 @@
 
 source $(dirname $0)/common.sh
 
+STACK_GLOBAL_DIR="${PWD}/.stack-global"
+
+create_global_stack_dir() {
+    if [ ! -d ${STACK_GLOBAL_DIR} ]; then
+        echo "Creating global stack directory: ${STACK_GLOBAL_DIR}"
+        mkdir ${STACK_GLOBAL_DIR}
+    fi
+}
+
 graphical_options() {
     echo \
         --env DISPLAY \
@@ -22,4 +31,5 @@ run_container() {
         $@ || exit -1
 }
 
+create_global_stack_dir
 run_container $@
