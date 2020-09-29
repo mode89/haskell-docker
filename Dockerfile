@@ -1,4 +1,4 @@
-FROM haskell:8.10.2
+FROM haskell
 
 ARG CONTAINER_USER
 ARG HOST_USER_GID
