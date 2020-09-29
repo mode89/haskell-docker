@@ -18,7 +18,7 @@ run_container() {
         --user user \
         --volume $PWD:/workdir:rw \
         $(graphical_options) \
-        $CONTAINER_NAME \
+        ${IMAGE_NAME} \
         $@ || exit -1
 }
 
