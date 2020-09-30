@@ -42,6 +42,7 @@ RUN groupadd --gid ${HOST_USER_GID:?} ${CONTAINER_USER:?} && \
     echo "${CONTAINER_USER:?} ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
 
 RUN apt-get install -y \
+        libgirepository1.0-dev \
         libgtk-3-dev
 
 USER user
