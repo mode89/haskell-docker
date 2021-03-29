@@ -1,4 +1,4 @@
-FROM haskell
+FROM ubuntu:20.04
 
 ARG CONTAINER_USER
 ARG HOST_USER_GID
@@ -41,9 +41,44 @@ RUN groupadd --gid ${HOST_USER_GID:?} ${CONTAINER_USER:?} && \
     apt-get install -y sudo && \
     echo "${CONTAINER_USER:?} ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
 
-RUN apt-get install -y \
-        libgirepository1.0-dev \
-        libgtk-3-dev
+RUN apt-get update && \
+    apt-get install -y \
+        autoconf \
+        cabal-install \
+        git \
+        nodejs \
+        npm \
+        python3 \
+        zlib1g-dev
+
+USER user
+
+RUN cabal update && \
+    cabal install alex && \
+    cabal install happy-1.19.9
+ENV PATH /home/user/.cabal/bin:${PATH}
+
+WORKDIR /tmp
+ENV GHCJS_COMPILER_DIR /home/user/.ghcjs-compiler
+ENV PATH ${GHCJS_COMPILER_DIR}/bin:${PATH}
+RUN git clone --branch ghc-8.6 https://github.com/ghcjs/ghcjs.git && \
+    cd ghcjs && \
+    git submodule update --init --recursive && \
+    sed --in-place \
+        "s/^\(cabal.\+sandbox.\+init\)/\1 \${CABAL_SANDBOX_INIT_ARGS}/" \
+        utils/makeSandbox.sh && \
+    ./utils/makePackages.sh && \
+    CABAL_SANDBOX_INIT_ARGS="--sandbox ${GHCJS_COMPILER_DIR}" \
+        ./utils/makeSandbox.sh && \
+    cabal install --jobs=$(nproc) && \
+    cd /tmp && \
+    rm -r /tmp/ghcjs && \
+    ghcjs-boot
+
+USER root
+RUN apt-get update && \
+    apt-get install -y curl
+RUN curl -sSL https://get.haskellstack.org/ | sh
 
 USER user
 RUN ln -s /workdir/.stack-global /home/user/.stack
