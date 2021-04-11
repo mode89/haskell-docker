@@ -28,6 +28,7 @@ run_container() {
         --tty \
         --user user \
         --volume $PWD:/workdir:rw \
+        --volume $HOME/.bash_history:/home/user/.bash_history:rw \
         $(graphical_options) \
         ${IMAGE_NAME} \
         $@ || exit -1
