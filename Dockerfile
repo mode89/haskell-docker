@@ -41,10 +41,21 @@ RUN groupadd --gid ${HOST_USER_GID:?} ${CONTAINER_USER:?} && \
     apt-get install -y sudo && \
     echo "${CONTAINER_USER:?} ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
 
+# *************************************************************************
+# Install GHC and Cabal
+# *************************************************************************
+
+USER root
+RUN apt-get install -y software-properties-common && \
+    add-apt-repository -y ppa:hvr/ghc && \
+    apt-get install -y \
+        cabal-install-2.4 \
+        ghc-8.6.5
+ENV PATH ${PATH}:/opt/cabal/2.4/bin:/opt/ghc/8.6.5/bin
+
 RUN apt-get update && \
     apt-get install -y \
         autoconf \
-        cabal-install \
         git \
         nodejs \
         npm \
