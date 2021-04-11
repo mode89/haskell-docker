@@ -57,25 +57,31 @@ ENV PATH ${PATH}:/opt/cabal/2.4/bin:/opt/ghc/8.6.5/bin
 # Install GHCJS
 # *************************************************************************
 
+USER root
 RUN apt-get update && \
     apt-get install -y \
         autoconf \
         git \
+        libtinfo-dev \
         nodejs \
         npm \
         python3 \
         zlib1g-dev
 
 USER user
-
 RUN cabal update && \
     cabal install alex && \
     cabal install happy-1.19.9
-ENV PATH /home/user/.cabal/bin:${PATH}
+ENV PATH ${PATH}:/home/user/.cabal/bin
 
+USER root
+ENV GHCJS_INSTALL_DIR /opt/ghcjs
+RUN mkdir ${GHCJS_INSTALL_DIR:?} && \
+    chown user:user ${GHCJS_INSTALL_DIR:?}
+
+USER user
 WORKDIR /tmp
-ENV GHCJS_COMPILER_DIR /home/user/.ghcjs-compiler
-ENV PATH ${GHCJS_COMPILER_DIR}/bin:${PATH}
+ENV PATH ${PATH}:${GHCJS_INSTALL_DIR}/bin
 RUN git clone --branch ghc-8.6 https://github.com/ghcjs/ghcjs.git && \
     cd ghcjs && \
     git submodule update --init --recursive && \
@@ -83,12 +89,15 @@ RUN git clone --branch ghc-8.6 https://github.com/ghcjs/ghcjs.git && \
         "s/^\(cabal.\+sandbox.\+init\)/\1 \${CABAL_SANDBOX_INIT_ARGS}/" \
         utils/makeSandbox.sh && \
     ./utils/makePackages.sh && \
-    CABAL_SANDBOX_INIT_ARGS="--sandbox ${GHCJS_COMPILER_DIR}" \
+    CABAL_SANDBOX_INIT_ARGS="--sandbox ${GHCJS_INSTALL_DIR}" \
         ./utils/makeSandbox.sh && \
     cabal install --jobs=$(nproc) && \
     cd /tmp && \
     rm -r /tmp/ghcjs && \
     ghcjs-boot
+
+USER root
+RUN chown -R root:root ${GHCJS_INSTALL_DIR:?}
 
 # *************************************************************************
 # Install stack
