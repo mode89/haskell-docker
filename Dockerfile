@@ -53,6 +53,10 @@ RUN apt-get install -y software-properties-common && \
         ghc-8.6.5
 ENV PATH ${PATH}:/opt/cabal/2.4/bin:/opt/ghc/8.6.5/bin
 
+# *************************************************************************
+# Install GHCJS
+# *************************************************************************
+
 RUN apt-get update && \
     apt-get install -y \
         autoconf \
@@ -85,6 +89,10 @@ RUN git clone --branch ghc-8.6 https://github.com/ghcjs/ghcjs.git && \
     cd /tmp && \
     rm -r /tmp/ghcjs && \
     ghcjs-boot
+
+# *************************************************************************
+# Install stack
+# *************************************************************************
 
 USER root
 RUN apt-get update && \
