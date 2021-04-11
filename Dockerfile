@@ -50,7 +50,8 @@ RUN apt-get install -y software-properties-common && \
     add-apt-repository -y ppa:hvr/ghc && \
     apt-get install -y \
         cabal-install-2.4 \
-        ghc-8.6.5
+        ghc-8.6.5 \
+        ghc-8.6.5-prof
 ENV PATH ${PATH}:/opt/cabal/2.4/bin:/opt/ghc/8.6.5/bin
 
 # *************************************************************************
