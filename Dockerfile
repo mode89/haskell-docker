@@ -52,7 +52,7 @@ RUN apt-get install -y software-properties-common && \
         cabal-install-2.4 \
         ghc-8.6.5 \
         ghc-8.6.5-prof
-ENV PATH ${PATH}:/opt/cabal/2.4/bin:/opt/ghc/8.6.5/bin
+ENV PATH ${PATH}:/opt/cabal/bin:/opt/ghc/8.6.5/bin
 
 # *************************************************************************
 # Install GHCJS
@@ -122,6 +122,19 @@ RUN curl -sSL https://get.haskellstack.org/ | sh
 
 USER user
 RUN ln -s /workdir/.stack-global /home/user/.stack
+
+# *************************************************************************
+# Upgrade Cabal
+# *************************************************************************
+
+USER root
+RUN apt-get remove -y cabal-install-2.4 && \
+    apt-get install -y cabal-install-3.4
+ENV PATH ${PATH}:/opt/cabal/3.4/bin
+
+# *************************************************************************
+# Finalize
+# *************************************************************************
 
 WORKDIR /workdir
 CMD /bin/bash
