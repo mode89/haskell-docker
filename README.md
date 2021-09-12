@@ -1,6 +1,7 @@
-This docker image deploys the Haskell's stack, as well as provides
-a convenient environment for experimenting with Haskell code.
-I made this image for the purposes of learning Haskell.
+Container for building Haskell code. It provides:
+* Cabal 3.6.0.0
+* GHC 8.10.7
+* GHCJS 8.10.7
 
 ## Usage
 
@@ -17,5 +18,6 @@ Run shell inside the container:
 ```
 $ <repo-dir>/run
 ```
-This script mounts the host's working directory as `/workdir` inside container
-and proceeds into an interactive shell session within the created container.
+This script mounts the host's current working directory as `/workdir` inside
+container and proceeds into an interactive shell session within the created
+container.

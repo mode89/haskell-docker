@@ -5,20 +5,10 @@ ARG HOST_USER_GID
 ARG HOST_USER_UID
 ARG TIMEZONE
 
-WORKDIR /tmp
+WORKDIR /tmp/workdir
 
 # Disable interactive configuration
 ENV DEBIAN_FRONTEND=noninteractive
-
-# Install host's certificates
-ARG COPY_HOST_CERTIFICATES
-COPY ca-certificates ca-certificates
-RUN if [ ${COPY_HOST_CERTIFICATES} -eq 1 ]; then \
-        cp -r ca-certificates /usr/local/share/ca-certificates && \
-        apt-get update && \
-        apt-get install -y ca-certificates && \
-        update-ca-certificates; \
-    fi
 
 # Setup the host's timezone
 RUN apt-get update && \
@@ -41,100 +31,76 @@ RUN groupadd --gid ${HOST_USER_GID:?} ${CONTAINER_USER:?} && \
     apt-get install -y sudo && \
     echo "${CONTAINER_USER:?} ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
 
-# *************************************************************************
-# Install GHC and Cabal
-# *************************************************************************
+############################################################################
+# Install Cabal and GHC
+############################################################################
 
-USER root
-RUN apt-get install -y software-properties-common && \
-    add-apt-repository -y ppa:hvr/ghc && \
-    apt-get install -y \
-        cabal-install-2.4 \
-        ghc-8.6.5 \
-        ghc-8.6.5-prof
-ENV PATH ${PATH}:/opt/cabal/bin:/opt/ghc/8.6.5/bin
+RUN apt-get install -y \
+        build-essential \
+        curl
+RUN curl -OL https://downloads.haskell.org/~ghcup/x86_64-linux-ghcup
+RUN chmod 755 x86_64-linux-ghcup
+ENV GHCUP_INSTALL_BASE_PREFIX /opt/ghcup
+RUN ./x86_64-linux-ghcup install cabal 3.6.0.0
+RUN ./x86_64-linux-ghcup install ghc 8.10.7
+RUN rm x86_64-linux-ghcup
+ENV PATH ${PATH}:${GHCUP_INSTALL_BASE_PREFIX}/.ghcup/bin
+ENV PATH ${PATH}:${GHCUP_INSTALL_BASE_PREFIX}/.ghcup/ghc/8.10.7/bin
 
-# *************************************************************************
+############################################################################
 # Install GHCJS
-# *************************************************************************
+############################################################################
 
-USER root
-RUN apt-get update && \
-    apt-get install -y \
-        autoconf \
-        git \
-        libtinfo-dev \
-        nodejs \
-        npm \
-        python3 \
-        zlib1g-dev
+RUN apt-get install -y git
+RUN apt-get install -y libgmp-dev
 
-USER user
-RUN cabal update && \
-    cabal install alex && \
-    cabal install happy-1.19.9
-ENV PATH ${PATH}:/home/user/.cabal/bin
+ENV CABAL_DIR /tmp/workdir/.cabal
+RUN cabal update
+RUN cabal install alex
+RUN cabal install happy-1.19.12
 
-USER root
-ENV GHCJS_INSTALL_DIR /opt/ghcjs
-RUN mkdir ${GHCJS_INSTALL_DIR:?} && \
-    chown user:user ${GHCJS_INSTALL_DIR:?}
+RUN apt-get install -y python3
+RUN apt-get install -y autoconf
+RUN apt-get install -y libtinfo-dev
 
-USER user
-WORKDIR /tmp
-ENV PATH ${PATH}:${GHCJS_INSTALL_DIR}/bin
-RUN git clone --branch ghc-8.6 https://github.com/ghcjs/ghcjs.git && \
-    cd ghcjs && \
-    git submodule update --init --recursive && \
-    sed --in-place \
-        "s/^\(cabal.\+sandbox.\+init\)/\1 \${CABAL_SANDBOX_INIT_ARGS}/" \
-        utils/makeSandbox.sh && \
-    ./utils/makePackages.sh && \
-    CABAL_SANDBOX_INIT_ARGS="--sandbox ${GHCJS_INSTALL_DIR}" \
-        ./utils/makeSandbox.sh && \
-    cabal install --jobs=$(nproc) && \
-    cd /tmp && \
-    rm -r /tmp/ghcjs && \
-    ghcjs-boot
+WORKDIR /opt/emsdk
+RUN git clone https://github.com/emscripten-core/emsdk.git .
+RUN git checkout b362b173261bcf2f5e5318702398a0871b37a0c4
+RUN ./emsdk install latest
+RUN ./emsdk activate latest
 
-USER root
-RUN chown -R root:root ${GHCJS_INSTALL_DIR:?}
+WORKDIR /tmp/workdir/ghcjs
+RUN git clone https://github.com/ghcjs/ghcjs.git .
+RUN git checkout 8802b310c89eda51f0b1ac0cded74a756642a615
+RUN git submodule update --init --recursive --jobs 8
 
-# *************************************************************************
-# Install webkit2gtk
-# *************************************************************************
+COPY revert-e4cd4232.patch .
+RUN patch -p1 -i revert-e4cd4232.patch
+COPY boot-no-parallel-build.patch .
+RUN patch -p1 -i boot-no-parallel-build.patch
+COPY ghc-boot ghc/libraries/ghc-boot/dist-install/build
+COPY configure-libraries.sh .
+RUN ./configure-libraries.sh
 
-USER root
-RUN apt-get update && \
-    apt-get install -y \
-        libgirepository1.0-dev \
-        libwebkit2gtk-4.0-dev \
-        pkg-config
+RUN utils/makePackages.sh
 
-# *************************************************************************
-# Install stack
-# *************************************************************************
+ENV GHCJS_DIR /opt/ghcjs
+RUN mkdir -p ${GHCJS_DIR:?}/bin
+RUN cabal v2-install \
+        --overwrite-policy=always \
+        --install-method=copy \
+        --installdir=${GHCJS_DIR:?}/bin
 
-USER root
-RUN apt-get update && \
-    apt-get install -y curl
-RUN curl -sSL https://get.haskellstack.org/ | sh
+RUN mkdir -p ${GHCJS_DIR:?}/doc
+RUN /bin/bash -c " \
+        source /opt/emsdk/emsdk_env.sh && \
+        ${GHCJS_DIR:?}/bin/ghcjs-boot --source-dir lib/boot"
 
 USER user
-RUN ln -s /workdir/.stack-global /home/user/.stack
-
-# *************************************************************************
-# Upgrade Cabal
-# *************************************************************************
-
-USER root
-RUN apt-get remove -y cabal-install-2.4 && \
-    apt-get install -y cabal-install-3.4
-ENV PATH ${PATH}:/opt/cabal/3.4/bin
-
-# *************************************************************************
-# Finalize
-# *************************************************************************
+ENV CABAL_DIR /home/user/.cabal
+WORKDIR /home/user
+RUN cabal update
+RUN cabal install happy
 
 WORKDIR /workdir
 CMD /bin/bash
