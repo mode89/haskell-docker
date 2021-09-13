@@ -11,6 +11,15 @@ create_bash_history_file() {
     fi
 }
 
+cabal_dir_volume() {
+    if [ ! -z ${HASKELL_DOCKER_CABAL_DIR_VOLUME} ]; then
+        if [ ! -x ${HASKELL_DOCKER_CABAL_DIR_VOLUME:?} ]; then
+            mkdir ${HASKELL_DOCKER_CABAL_DIR_VOLUME:?}
+        fi
+        echo "--volume $(realpath ${HASKELL_DOCKER_CABAL_DIR_VOLUME:?}):/home/user/.cabal:rw"
+    fi
+}
+
 graphical_options() {
     echo \
         --env DISPLAY \
@@ -29,6 +38,7 @@ run_container() {
         --user user \
         --volume $PWD:/workdir:rw \
         --volume ${BASH_HISTORY_FILE:?}:/home/user/.bash_history:rw \
+        $(cabal_dir_volume) \
         $(graphical_options) \
         ${IMAGE_NAME} \
         $@ || exit -1

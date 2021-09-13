@@ -21,3 +21,8 @@ $ <repo-dir>/run
 This script mounts the host's current working directory as `/workdir` inside
 container and proceeds into an interactive shell session within the created
 container.
+
+### Configuration
+
+If `HASKELL_DOCKER_CABAL_DIR_VOLUME` environment variable defined, it is
+going to be mounted as `/home/user/.cabal` inside the container.
