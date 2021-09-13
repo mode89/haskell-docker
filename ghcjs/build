@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+set -e
+
+WORK_DIR=/tmp/ghcjs
+REPO_DIR=${WORK_DIR:?}/repo
+
+apt-get install -y \
+    autoconf \
+    git \
+    libgmp-dev \
+    libtinfo-dev \
+    python3
+
+export CABAL_DIR=${WORK_DIR:?}/.cabal
+
+cabal update
+cabal install \
+    alex-3.2.6 \
+    happy-1.19.12
+
+mkdir /opt/emsdk
+cd /opt/emsdk
+git clone https://github.com/emscripten-core/emsdk.git .
+git checkout b362b173261bcf2f5e5318702398a0871b37a0c4
+./emsdk install 2.0.29
+./emsdk activate 2.0.29
+
+git clone --recursive --jobs 8 \
+    https://github.com/ghcjs/ghcjs.git \
+    ${REPO_DIR:?}
+cd ${REPO_DIR:?}
+git checkout 8802b310c89eda51f0b1ac0cded74a756642a615
+
+patch -p1 -i ${WORK_DIR:?}/revert-e4cd4232.patch
+patch -p1 -i ${WORK_DIR:?}/boot-no-parallel-build.patch
+
+cat ghc/libraries/ghc-boot/ghc-boot.cabal.in | \
+    sed "s/@ProjectVersionMunged@/8.10.7/g" > \
+        ghc/libraries/ghc-boot/ghc-boot.cabal
+
+cat ghc/libraries/ghc-boot-th/ghc-boot-th.cabal.in | \
+    sed "s/@ProjectVersionMunged@/8.10.7/g" > \
+        ghc/libraries/ghc-boot-th/ghc-boot-th.cabal
+
+cat ghc/libraries/ghc-heap/ghc-heap.cabal.in | \
+    sed "s/@ProjectVersionMunged@/8.10.7/g" > \
+    ghc/libraries/ghc-heap/ghc-heap.cabal
+
+cat ghc/libraries/ghci/ghci.cabal.in | \
+    sed "s/@ProjectVersionMunged@/8.10.7/g" > \
+    ghc/libraries/ghci/ghci.cabal
+
+cat ghc/libraries/template-haskell/template-haskell.cabal.in | \
+    sed "s/@ProjectVersionMunged@/8.10.7/g" > \
+    ghc/libraries/template-haskell/template-haskell.cabal
+
+mkdir -p ${REPO_DIR:?}/ghc/libraries/ghc-boot/dist-install/build
+cp -r \
+    ${WORK_DIR:?}/ghc-boot/GHC \
+    ${REPO_DIR:?}/ghc/libraries/ghc-boot/dist-install/build/
+
+utils/makePackages.sh
+
+GHCJS_DIR=/opt/ghcjs
+mkdir -p ${GHCJS_DIR:?}/bin
+cabal v2-install \
+    --overwrite-policy=always \
+    --install-method=copy \
+    --installdir=${GHCJS_DIR:?}/bin
+
+mkdir -p ${GHCJS_DIR:?}/doc
+source /opt/emsdk/emsdk_env.sh
+${GHCJS_DIR:?}/bin/ghcjs-boot --source-dir ${REPO_DIR:?}/lib/boot
+
+cd /tmp
+rm -r ${WORK_DIR:?}
